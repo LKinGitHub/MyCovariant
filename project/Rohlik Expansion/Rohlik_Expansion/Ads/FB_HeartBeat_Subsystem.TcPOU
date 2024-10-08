@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_HeartBeat_Subsystem" Id="{f4705ac8-c2e7-4066-9e2a-39c2c41daf98}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_HeartBeat_Subsystem EXTENDS FB_Generic
+VAR_INPUT
+	
+END_VAR
+VAR_OUTPUT
+	heart_timeout_Alarm:BOOL;
+END_VAR
+VAR
+	bReset_ads_heart_beat	: HeartbeatParams;
+	bReset_ads_heart_beatTemp	: HeartbeatParams;
+	heart_timeout:TON;
+	AA: INT;
+	rtrig_abort	: R_TRIG;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[heart_timeout(PT:=T#3S);
+
+IF bReset_ads_heart_beat.current_time_ms=bReset_ads_heart_beatTemp.current_time_ms THEN
+	heart_timeout.IN	:=TRUE;
+ELSE
+	heart_timeout.IN	:=FALSE;
+	heart_timeout_Alarm:=FALSE;
+	bReset_ads_heart_beatTemp.current_time_ms	:= bReset_ads_heart_beat.current_time_ms;	
+END_IF
+
+IF heart_timeout.Q  THEN
+	heart_timeout.IN:=FALSE;
+	heart_timeout_Alarm:=TRUE;
+	
+END_IF
+
+rtrig_abort(CLK	:= heart_timeout_Alarm);
+IF rtrig_abort.Q THEN
+	IF sInstanceName='heartBeat_1' THEN
+		subData.Topic	:= E_Topics.WORKING1_ABORT_INBOUND;
+		GVL.PubSubService.Publish(topic:=E_Topics.WORKING1_ABORT_INBOUND,data:= subData);
+		subData.Topic	:= E_Topics.WORKING1_ABORT_OUTBOUND;
+		GVL.PubSubService.Publish(topic:=E_Topics.WORKING1_ABORT_OUTBOUND,data:= subData);	
+	END_IF	
+	IF sInstanceName='heartBeat_2' THEN
+		subData.Topic	:= E_Topics.WORKING2_ABORT_INBOUND;
+		GVL.PubSubService.Publish(topic:=E_Topics.WORKING2_ABORT_INBOUND,data:= subData);	
+		subData.Topic	:= E_Topics.WORKING2_ABORT_OUTBOUND;
+		GVL.PubSubService.Publish(topic:=E_Topics.WORKING2_ABORT_OUTBOUND,data:= subData);		
+	END_IF		
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="heartbeat" Id="{f3dcafaa-9e61-4170-9f3f-99aa20b20ebc}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+METHOD heartbeat : UDINT
+VAR_INPUT
+	heartbeat_params : HeartbeatParams;	
+END_VAR
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[heartbeat	:= 1; 
+bReset_ads_heart_beat	:= heartbeat_params;
+heartbeat	:= MethodCallReturnValue.ACCEPTED;
+
+AA:=AA+1;
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_HeartBeat_Subsystem">
+      <LineId Id="22" Count="12" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="96" Count="10" />
+      <LineId Id="94" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_HeartBeat_Subsystem.heartbeat">
+      <LineId Id="11" Count="2" />
+      <LineId Id="24" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
